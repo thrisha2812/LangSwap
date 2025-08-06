@@ -14,8 +14,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import Waiting from "./pages/Waiting";
 import findMatch from "./utils/matchmaker";
 import WaitingRoom from "./pages/WaitingRoom";
-import Chatroom
- from "./pages/ChatRoom";
+import Chatroom from "./pages/ChatRoom";
 function App() {
   // 🔹 Optional Firestore test (can be removed later)
   useEffect(() => {

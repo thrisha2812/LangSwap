@@ -1,9 +1,8 @@
 import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
-import { db } from "../firebase/config"; // make sure this path is correct
+import { db } from "../firebase/config";
 
 const findMatch = async (currentUser) => {
   const userRef = collection(db, "users");
-
   const q = query(
     userRef,
     where("nativeLanguage", "==", currentUser.targetLanguage),
@@ -11,17 +10,19 @@ const findMatch = async (currentUser) => {
   );
 
   const snapshot = await getDocs(q);
+  console.log("🧾 Match query snapshot size:", snapshot.size);
 
   if (!snapshot.empty) {
-    const match = snapshot.docs[0].data();
+    const matchedDoc = snapshot.docs[0];
+    const match = matchedDoc.data();
+    const matchUid = matchedDoc.id;
 
-    // Create a chatroom for the pair
     const room = await addDoc(collection(db, "chatrooms"), {
-      users: [currentUser.uid, match.uid],
+      users: [currentUser.uid, matchUid],
       createdAt: new Date().toISOString(),
     });
 
-    return room.id; // you can redirect to `/chatroom/${room.id}`
+    return room.id;
   } else {
     console.log("No match found. Waiting for someone...");
     return null;

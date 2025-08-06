@@ -1,28 +1,30 @@
+// src/pages/Chatroom.jsx
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { getAuth } from "firebase/auth";
 import {
+  getFirestore,
   collection,
   addDoc,
+  onSnapshot,
   query,
   orderBy,
-  onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
 
 const db = getFirestore();
 
-function Chatroom() {
+const Chatroom = () => {
   const { roomId } = useParams();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const auth = getAuth();
+  const user = auth.currentUser;
 
+  // Load messages in real-time
   useEffect(() => {
-    const q = query(
-      collection(db, "chatrooms", roomId, "messages"),
-      orderBy("createdAt")
-    );
+    const messagesRef = collection(db, "chatrooms", roomId, "messages");
+    const q = query(messagesRef, orderBy("timestamp", "asc"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map((doc) => doc.data());
@@ -32,42 +34,53 @@ function Chatroom() {
     return () => unsubscribe();
   }, [roomId]);
 
-  const sendMessage = async (e) => {
+  // Send message
+  const handleSend = async (e) => {
     e.preventDefault();
+    if (!input.trim()) return;
 
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user || input.trim() === "") return;
-
-    await addDoc(collection(db, "chatrooms", roomId, "messages"), {
-      text: input,
-      uid: user.uid,
-      createdAt: serverTimestamp(),
-    });
-
-    setInput("");
+    try {
+      await addDoc(collection(db, "chatrooms", roomId, "messages"), {
+        text: input,
+        senderId: user.uid,
+        timestamp: serverTimestamp(),
+      });
+      setInput(""); // clear input
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
 
   return (
-    <div className="chatroom">
-      <h2>🗣 Chatroom</h2>
-      <div className="messages">
-        {messages.map((msg, idx) => (
-          <p key={idx} className={msg.uid === getAuth().currentUser?.uid ? "my-msg" : "other-msg"}>
-            {msg.text}
-          </p>
+    <div className="chatroom-container">
+      <div className="messages-box" style={{ height: "300px", overflowY: "auto", border: "1px solid #ccc", padding: "1rem", marginBottom: "1rem" }}>
+        {messages.map((msg, index) => (
+          <div
+            key={index}
+            style={{
+              textAlign: msg.senderId === user?.uid ? "right" : "left",
+              margin: "0.5rem 0",
+            }}
+          >
+            <span>{msg.text}</span>
+          </div>
         ))}
       </div>
-      <form onSubmit={sendMessage} className="chat-input">
+
+      <form onSubmit={handleSend} className="chat-form">
         <input
+          type="text"
           value={input}
+          placeholder="Type your message..."
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
+          style={{ width: "80%", padding: "0.5rem" }}
         />
-        <button type="submit">Send</button>
+        <button type="submit" style={{ padding: "0.5rem 1rem" }}>
+          Send
+        </button>
       </form>
     </div>
   );
-}
+};
 
 export default Chatroom;

@@ -1,18 +1,32 @@
-import React from "react";
+// src/pages/WaitingRoom.jsx
+import React, { useEffect } from "react";
+import { getAuth } from "firebase/auth";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../firebase/config";
 import { useNavigate } from "react-router-dom";
 
-function WaitingRoom() {
+const WaitingRoom = () => {
   const navigate = useNavigate();
+  const auth = getAuth();
+  const user = auth.currentUser;
 
-  return (
-    <div style={{ textAlign: "center", padding: "40px" }}>
-      <h2>⏳ Waiting for a Match...</h2>
-      <p>We’ll notify you once someone with your language preferences joins.</p>
-      <p>You can leave this tab open or come back later.</p>
+  useEffect(() => {
+    const checkForMatch = async () => {
+      const chatroomRef = collection(db, "chatrooms");
+      const q = query(chatroomRef, where("users", "array-contains", user.uid));
+      const snapshot = await getDocs(q);
 
-      <button onClick={() => navigate("/")}>Go to Home</button>
-    </div>
-  );
-}
+      if (!snapshot.empty) {
+        const roomId = snapshot.docs[0].id;
+        navigate(`/chatroom/${roomId}`);
+      }
+    };
+
+    const interval = setInterval(checkForMatch, 5000); // check every 5 seconds
+    return () => clearInterval(interval);
+  }, [user, navigate]);
+
+  return <h2>⏳ Waiting for a match...</h2>;
+};
 
 export default WaitingRoom;
